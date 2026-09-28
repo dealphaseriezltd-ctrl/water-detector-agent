@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Water Detector Companion™ — The Borehole Doctor</title>
+<style>
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html{touch-action:manipulation;}
+  input,select,textarea,button{touch-action:manipulation; pointer-events:auto;}
+  :root{--bg:#0d1b2a; --card:#16283f; --line:#274264; --txt:#eaf2fb; --mut:#9db4d0;
+        --acc:#ffb703; --ok:#52d273; --warn:#ff9f1c; --bad:#ff5d5d;}
+  body{margin:0; font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       background:var(--bg); color:var(--txt);}
+  body.sun{--bg:#ffffff; --card:#f2f6fb; --line:#c4d3e6; --txt:#10233c; --mut:#47617f;}
+  header{position:sticky; top:0; z-index:10; background:#0a1524; border-bottom:2px solid var(--acc);
+         padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  body.sun header{background:#eef4fb;}
+  header h1{font-size:17px; margin:0; color:var(--acc);}
+  header .sub{font-size:11px; color:var(--mut);}
+  nav.tabs{position:sticky; top:64px; z-index:9; display:flex; gap:6px; overflow-x:auto;
+           background:var(--bg); padding:8px 10px; border-bottom:1px solid var(--line);}
+  nav.tabs button{flex:1 0 auto; white-space:nowrap; width:auto; margin:0; padding:9px 12px;}
+  nav.tabs button.on{background:var(--acc); color:#201500;}
+  main{padding:12px; max-width:760px; margin:0 auto; padding-bottom:90px;}
+  section.tab{display:none;} section.tab.on{display:block;}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:14px;
+        padding:14px; margin-bottom:12px;}
+  .card h2{font-size:15px; margin:0 0 10px; color:var(--acc);}
+  .row{display:flex; gap:8px; flex-wrap:wrap;} .row>*{flex:1 1 140px;}
+  label{display:block; font-size:12px; color:var(--mut); margin:8px 0 4px;}
+  input,select,textarea{width:100%; padding:12px; font-size:16px; border-radius:10px;
+    border:1px solid var(--line); background:#0a1728; color:var(--txt);}
+  body.sun input,body.sun select,body.sun textarea{background:#fff;}
+  textarea{min-height:70px; resize:vertical;}
+  button{background:var(--acc); color:#201500; border:0; border-radius:12px; padding:13px;
+         font-size:16px; font-weight:700; width:100%; margin-top:10px; cursor:pointer;}
+  button.ghost{background:transparent; color:var(--txt); border:1px solid var(--line);}
+  button.small{width:auto; padding:8px 12px; font-size:14px; margin:4px 4px 0 0;}
+  button.danger{background:transparent; color:var(--bad); border:1px solid var(--bad);}
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  th,td{border-bottom:1px solid var(--line); padding:7px 5px; text-align:left;}
+  th{color:var(--mut); font-weight:600; font-size:11px; text-transform:uppercase;}
+  .ptable input{padding:8px; font-size:14px;}
+  .ptable td.c{width:64px;} .ptable td.n{width:44px;}
+  .chk{width:22px; height:22px; accent-color:var(--acc);}
+  canvas.plot{width:100%; height:260px; background:#0a1728; border:1px solid var(--line);
+              border-radius:10px; touch-action:manipulation;}
+  body.sun canvas.plot{background:#fff;}
+  .verdict{border-radius:12px; padding:14px; font-weight:700; font-size:16px; margin-bottom:10px;}
+  .verdict.good{background:#12351f; color:#7bf0a4; border:1px solid #2c7a4b;}
+  .verdict.mid{background:#3a2a10; color:#ffcf7a; border:1px solid #8a6a2c;}
+  .verdict.poor{background:#3d1414; color:#ff9c9c; border:1px solid #8a3434;}
+  .reason{background:#0a1728; border:1px solid var(--line); border-radius:10px;
+          padding:10px 12px; margin:8px 0; font-size:14px; line-height:1.5;}
+  body.sun .reason{background:#fff;}
+  .reason b{color:var(--acc);}
+  .disc{font-size:12px; color:var(--mut); border-top:1px dashed var(--line);
+        margin-top:12px; padding-top:10px; line-height:1.5;}
+  .toast{position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
+         background:#1d2f47; color:#fff; padding:12px 18px; border-radius:24px;
+         font-size:14px; display:none; z-index:50; border:1px solid var(--acc); max-width:92vw;}
+  .pill{display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:700;}
+  .pill.yes{background:#3d1414; color:#ff9c9c;} .pill.no{background:#12351f; color:#7bf0a4;}
+  .imgrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;}
+  .imgrow img{width:96px; height:96px; object-fit:cover; border-radius:10px; border:1px solid var(--line);}
+  .about p{font-size:14px; line-height:1.65;} .about li{font-size:14px; line-height:1.6; margin-bottom:8px;}
+  .kbd{font-size:12px; color:var(--mut);}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>📡 Water Detector Companion™</h1>
+  <div class="sub">The Borehole Doctor · Dr. Uche Aluge Daniel</div></div>
+  <button id="btnSun" class="small ghost" style="width:auto;margin:0;">☀️</button>
+</header>
+<nav class="tabs" id="tabs">
+  <button data-t="survey" class="on">Survey</button>
+  <button data-t="profile">Profile</button>
+  <button data-t="opinion">AI Opinion</button>
+  <button data-t="map">Map</button>
+  <button data-t="about">About</button>
+  <button data-t="report">Report</button>
+</nav>
+<main>
+<!-- SURVEY -->
+<section class="tab on" id="tab-survey">
+  <div class="card"><h2>📋 Survey setup</h2>
+    <div class="row">
+      <div><label>Survey name</label><input id="svName" placeholder="e.g. Okposi Line A"></div>
+      <div><label>Date</label><input id="svDate" type="date"></div>
+    </div>
+    <label>Site / community</label><input id="svSite" placeholder="Village, town, LGA">
+    <div class="row">
+      <div><label>Detector model</label><select id="svDevice">
+        <option value="">— select —</option>
+        <optgroup label="PQWT (Hunan Puqi)">
+          <option>PQWT-S300</option><option>PQWT-S500</option><option>PQWT-TC300</option>
+          <option>PQWT-TC500</option><option>PQWT-TC700</option><option>PQWT-TC900</option>
+        </optgroup>
+        <optgroup label="ADMT (Aidu)">
+          <option>ADMT-60S-X</option><option>ADMT-300S-X</option><option>ADMT-600S-X</option><option>ADMT-900S-X</option>
+        </optgroup>
+        <option value="other">Other / not listed</option>
+      </select></div>
+      <div><label>Operator</label><input id="svOp" placeholder="Name"></div>
+    </div>
+    <div class="row">
+      <div><label>Terrain / geology</label><select id="svTerrain">
+        <option value="unknown">— not sure —</option>
+        <option value="basement">Basement complex (granite/gneiss)</option>
+        <option value="sedimentary">Sedimentary (sandstone/shale/alluvium)</option>
+        <option value="mixed">Mixed / contact zone</option>
+      </select></div>
+      <div><label>Water need</label><select id="svNeed">
+        <option>Domestic</option><option>Agriculture</option><option>Community</option><option>Commercial</option>
+      </select></div>
+    </div>
+    <label>GPS (site)</label>
+    <div class="row"><div><input id="svLat" inputmode="decimal" placeholder="Latitude"></div>
+    <div><input id="svLon" inputmode="decimal" placeholder="Longitude"></div>
+    <div><button id="btnGps" class="ghost" type="button">📍 Capture</button></div></div>
+    <label>Measurement channels (device frequencies)</label>
+    <div class="row"><div><select id="svNchan">
+      <option>2</option><option>3</option><option selected>4</option><option>5</option>
+      <option>6</option><option>7</option><option>8</option>
+    </select></div><div class="kbd" style="align-self:end">How many frequency<br>channels your device shows.</div></div>
+    <div class="row">
+      <button id="btnNewSurvey" class="ghost" type="button">＋ New survey</button>
+      <button id="btnDelSurvey" class="danger" type="button">Delete survey</button>
+    </div>
+    <label>Saved surveys</label><select id="selSurvey"></select>
+  </div>
+  <div class="card"><h2>💧 Nearby borehole records (your best cross-check)</h2>
+    <div class="kbd">Any borehole you know near this site — successful or failed. Depth in metres, yield if known.</div>
+    <div class="row">
+      <div><label>Depth (m)</label><input id="wDepth" inputmode="decimal" placeholder="e.g. 45"></div>
+      <div><label>Yield (optional)</label><input id="wYield" placeholder="e.g. 2 L/s"></div>
+      <div><label>Approx. distance</label><input id="wDist" placeholder="e.g. 300 m"></div>
+    </div>
+    <div class="row">
+      <div><label>Outcome</label><select id="wOut"><option>Productive</option><option>Dry / failed</option><option>Seasonal</option></select></div>
+      <div style="align-self:end"><button id="btnAddWell" type="button">＋ Add record</button></div>
+    </div>
+    <table id="wellTable"><thead><tr><th>Depth</th><th>Yield</th><th>Distance</th><th>Outcome</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="card"><h2>🎙️ Voice note & 📷 site photo</h2>
+    <div class="row">
+      <button id="btnRec" class="ghost" type="button">● Record note</button>
+      <button id="btnStop" class="ghost" type="button" disabled>■ Stop</button>
+      <label class="ghost" style="text-align:center;cursor:pointer;border:1px solid var(--line);border-radius:12px;padding:13px;margin-top:10px;">📷 Add photo<input id="filePhoto" type="file" accept="image/*" capture="environment" hidden></label>
+    </div>
+    <div id="audioList"></div><div class="imgrow" id="imgRow"></div>
+  </div>
+</section>
+<!-- PROFILE -->
+<section class="tab" id="tab-profile">
+  <div class="card"><h2>📏 Profile line</h2>
+    <div class="row">
+      <div><label>Line ID</label><input id="lnId" placeholder="e.g. Line A"></div>
+      <div><label>Point spacing (m)</label><input id="lnSpacing" inputmode="decimal" placeholder="e.g. 5"></div>
+      <div style="align-self:end"><button id="btnAddLine" type="button">＋ Add line</button></div>
+    </div>
+    <label>Lines in this survey</label><select id="selLine"></select>
+  </div>
+  <div class="card"><h2>📝 Log a measurement point</h2>
+    <div class="kbd">Enter exactly what the device shows at each point: its channel values, and — if the device flags it — the anomaly and the depth it claims.</div>
+    <div class="row">
+      <div><label>Point no.</label><input id="pN" inputmode="numeric" placeholder="1"></div>
+      <div><label>Distance (m)</label><input id="pDist" inputmode="decimal" placeholder="0"></div>
+    </div>
+    <label>Channel values (as shown on device)</label>
+    <div id="chanInputs" class="row"></div>
+    <div class="row">
+      <div><label>Device flagged anomaly?</label><select id="pAnom"><option value="no">No</option><option value="yes">Yes — device flagged this point</option></select></div>
+      <div><label>Depth claimed by device (m)</label><input id="pDepth" inputmode="decimal" placeholder="e.g. 62"></div>
+    </div>
+    <button id="btnAddPoint" type="button">＋ Add point</button>
+  </div>
+  <div class="card"><h2>📊 Points on this line</h2>
+    <div style="overflow-x:auto"><table class="ptable" id="ptTable"><thead></thead><tbody></tbody></table></div>
+    <canvas class="plot" id="profPlot"></canvas>
+    <div class="kbd" id="plotNote"></div>
+  </div>
+</section>
+<!-- OPINION -->
+<section class="tab" id="tab-opinion">
+  <div class="card"><h2>🤖 The Doctor's Second Opinion</h2>
+    <div class="kbd">The AI cross-checks the <b>device's claims</b> against hydrogeological common sense — your terrain, nearby borehole records, and how the device behaved on this line. It does <b>not</b> validate the device's measurement physics.</div>
+    <button id="btnOpinion" type="button">🔍 Run second opinion</button>
+    <div id="opinionOut" style="margin-top:12px"></div>
+    <div class="disc">Honesty note: natural-electric-field "water detectors" have no peer-reviewed physical basis for their depth/yield claims. This second opinion cannot make an unproven measurement proven — it can only tell you whether the device's story is consistent with the ground you actually know. When money is on the line, confirm with a real VES (resistivity) survey.</div>
+  </div>
+</section>
+<!-- MAP -->
+<section class="tab" id="tab-map">
+  <div class="card"><h2>🗺️ Survey map</h2>
+    <canvas class="plot" id="mapCv" style="height:300px"></canvas>
+    <div class="kbd" id="mapNote"></div>
+  </div>
+</section>
+<!-- ABOUT -->
+<section class="tab" id="tab-about">
+  <div class="card about"><h2>⚖️ What these detectors can — and cannot — do</h2>
+    <p><b>What they do:</b> PQWT, ADMT and similar instruments measure tiny natural electrical signals in the ground along a profile, then their built-in software draws a colourful cross-section and points at "water zones" with depth numbers.</p>
+    <p><b>The problem:</b> no published, peer-reviewed physics connects those signals to aquifer depth or yield. The algorithms are proprietary black boxes — you cannot see raw data, and two operators can get two different "answers" on the same ground.</p>
+    <ul>
+      <li>✅ Useful as <b>reconnaissance</b> — a quick first look, especially where you have nothing else.</li>
+      <li>⚠️ <b>Not</b> a substitute for resistivity (VES), seismic, or a logged borehole nearby.</li>
+      <li>🚫 Never drill — and never pay — on the device's word alone. That is exactly the trap The Borehole Doctor exists to close.</li>
+    </ul>
+    <p><b>How to use this app:</b> log what the device says, then let the second opinion stress-test it against your terrain and nearby borehole records. If the story doesn't hold, run a VES before the rig arrives.</p>
+  </div>
+</section>
+<!-- REPORT -->
+<section class="tab" id="tab-report">
+  <div class="card"><h2>📄 Report & backup</h2>
+    <div class="row">
+      <button id="btnCsv" class="ghost" type="button">⬇ CSV (points)</button>
+      <button id="btnHtml" class="ghost" type="button">⬇ Word-ready report</button>
+    </div>
+    <div class="row">
+      <button id="btnJson" class="ghost" type="button">⬇ Backup (JSON)</button>
+      <label class="ghost" style="text-align:center;cursor:pointer;border:1px solid var(--line);border-radius:12px;padding:13px;margin-top:10px;flex:1 1 140px;">⬆ Restore<input id="fileJson" type="file" accept=".json" hidden></label>
+    </div>
+    <div class="kbd">Everything is stored on this phone only. Back up the JSON before clearing browser data.</div>
+  </div>
+</section>
+</main>
+<div class="toast" id="toast"></div>
+<script>
+"use strict";
+/* ===== storage ===== */
+const KEY="wdc_db_v1";
+let DB={surveys:[],currentSurveyId:null,currentLineId:null};
+function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}}
+function load(){try{const s=localStorage.getItem(KEY); if(s){DB=JSON.parse(s);}}catch(e){}}
+const $=id=>document.getElementById(id);
+function toast(m){const t=$("toast"); t.textContent=m; t.style.display="block";
+  clearTimeout(t._h); t._h=setTimeout(()=>t.style.display="none",2200);}
+function uid(){return "s"+Date.now().toString(36)+Math.floor(Math.random()*1e4);}
+function curSurvey(){return DB.surveys.find(s=>s.id===DB.currentSurveyId)||null;}
+function curLine(){const sv=curSurvey(); if(!sv)return null;
+  return (sv.lines||[]).find(l=>l.id===DB.currentLineId)||null;}
+/* ===== surveys ===== */
+function blankSurvey(){return {id:uid(), name:"Survey 1", date:new Date().toISOString().slice(0,10),
+  site:"", gps:{lat:"",lon:""}, device:"", operator:"", terrain:"unknown", need:"Domestic",
+  nchan:4, lines:[], wells:[], audios:[], photos:[]};}
+function renderSurveys(){
+  const sel=$("selSurvey"); sel.innerHTML="";
+  DB.surveys.forEach(s=>{const o=document.createElement("option"); o.value=s.id;
+    o.textContent=s.name+" ("+s.date+")"; sel.appendChild(o);});
+  if(DB.currentSurveyId) sel.value=DB.currentSurveyId;
+  const sv=curSurvey(); if(!sv) return;
+  $("svName").value=sv.name||""; $("svDate").value=sv.date||"";
+  $("svSite").value=sv.site||""; $("svDevice").value=sv.device||"";
+  $("svOp").value=sv.operator||""; $("svTerrain").value=sv.terrain||"unknown";
+  $("svNeed").value=sv.need||"Domestic";
+  $("svLat").value=sv.gps.lat||""; $("svLon").value=sv.gps.lon||"";
+  $("svNchan").value=String(sv.nchan||4);
+  renderWells(); renderAudios(); renderPhotos(); renderLines();
+}
+function bindSurveyInputs(){
+  const sv=()=>curSurvey(); if(!sv())return;
+  const map={svName:"name",svSite:"site",svDevice:"device",svOp:"operator",
+             svTerrain:"terrain",svNeed:"need"};
+  Object.keys(map).forEach(id=>{$(id).onchange=e=>{sv()[map[id]]=e.target.value;save();};});
+  $("svDate").onchange=e=>{sv().date=e.target.value;save();};
+  $("svLat").onchange=e=>{sv().gps.lat=e.target.value;save();};
+  $("svLon").onchange=e=>{sv().gps.lon=e.target.value;save();};
+  $("svNchan").onchange=e=>{sv().nchan=parseInt(e.target.value,10)||4;save();buildChanInputs();};
+}
+$("selSurvey").onchange=e=>{DB.currentSurveyId=e.target.value;
+  const sv=curSurvey(); DB.currentLineId=(sv.lines[0]||{}).id||null;
+  save(); renderAll();};
+$("btnNewSurvey").onclick=()=>{const s=blankSurvey();
+  s.name="Survey "+(DB.surveys.length+1); DB.surveys.push(s);
+  DB.currentSurveyId=s.id; DB.currentLineId=null; save(); renderAll();
+  toast("New survey created");};
+$("btnDelSurvey").onclick=()=>{const sv=curSurvey(); if(!sv)return;
+  if(!confirm("Delete survey '"+sv.name+"'?"))return;
+  DB.surveys=DB.surveys.filter(s=>s.id!==sv.id);
+  DB.currentSurveyId=(DB.surveys[0]||{}).id||null;
+  DB.currentLineId=null; save(); renderAll();};
+$("btnGps").onclick=()=>{const sv=curSurvey(); if(!sv)return;
+  if(!navigator.geolocation){toast("GPS not available");return;}
+  toast("Capturing GPS…");
+  navigator.geolocation.getCurrentPosition(p=>{
+    sv().gps.lat=p.coords.latitude.toFixed(6); sv().gps.lon=p.coords.longitude.toFixed(6);
+    save(); renderSurveys(); toast("GPS captured ✓");
+  },()=>toast("GPS failed"),{enableHighAccuracy:true,timeout:15000});};
+/* ===== wells ===== */
+$("btnAddWell").onclick=()=>{const sv=curSurvey(); if(!sv)return;
+  const d=parseFloat($("wDepth").value);
+  if(!isFinite(d)||d<=0){toast("Enter a valid depth");return;}
+  sv.wells.push({depth:d, yield:$("wYield").value.trim(), dist:$("wDist").value.trim(),
+    out:$("wOut").value});
+  ["wDepth","wYield","wDist"].forEach(i=>$(i).value=""); save(); renderWells();};
+function renderWells(){const sv=curSurvey();
+  const tb=$("wellTable").querySelector("tbody"); tb.innerHTML="";
+  (sv.wells||[]).forEach((w,i)=>{const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${w.depth} m</td><td>${w.yield||"—"}</td><td>${w.dist||"—"}</td><td>${w.out}</td>`;
+    const td=document.createElement("td"); const b=document.createElement("button");
+    b.className="small danger"; b.textContent="✕"; b.style.margin="0";
+    b.onclick=()=>{sv.wells.splice(i,1);save();renderWells();};
+    td.appendChild(b); tr.appendChild(td); tb.appendChild(tr);});}
+/* ===== audio & photos ===== */
+let rec=null,chunks=[];
+$("btnRec").onclick=async()=>{const sv=curSurvey(); if(!sv)return;
+  try{const st=await navigator.mediaDevices.getUserMedia({audio:true});
+    rec=new MediaRecorder(st); chunks=[];
+    rec.ondataavailable=e=>chunks.push(e.data);
+    rec.onstop=()=>{const bl=new Blob(chunks,{type:rec.mimeType||"audio/webm"});
+      const fr=new FileReader();
+      fr.onload=()=>{sv.audios.push({t:new Date().toLocaleString(),data:fr.result});
+        save(); renderAudios(); toast("Note saved ✓");};
+      fr.readAsDataURL(bl); st.getTracks().forEach(t=>t.stop());};
+    rec.start(); $("btnRec").disabled=true; $("btnStop").disabled=false;
+    toast("Recording… tap ■ to stop");
+  }catch(e){toast("Mic blocked");}};
+$("btnStop").onclick=()=>{if(rec&&rec.state!=="inactive")rec.stop();
+  $("btnRec").disabled=false; $("btnStop").disabled=true;};
+function renderAudios(){const sv=curSurvey(); const d=$("audioList"); d.innerHTML="";
+  (sv.audios||[]).forEach((a,i)=>{const w=document.createElement("div");
+    w.className="reason"; w.innerHTML=`🎙️ ${a.t} <button class="small danger" style="float:right">✕</button><br>`;
+    const au=document.createElement("audio"); au.controls=true; au.src=a.data;
+    au.style.width="100%"; au.style.marginTop="6px"; w.appendChild(au);
+    w.querySelector("button").onclick=()=>{sv.audios.splice(i,1);save();renderAudios();};
+    d.appendChild(w);});}
+$("filePhoto").onchange=e=>{const sv=curSurvey(); const f=e.target.files[0]; if(!sv||!f)return;
+  const img=new Image(); const url=URL.createObjectURL(f);
+  img.onload=()=>{const c=document.createElement("canvas");
+    const sc=Math.min(1,900/Math.max(img.width,img.height));
+    c.width=img.width*sc; c.height=img.height*sc;
+    c.getContext("2d").drawImage(img,0,0,c.width,c.height);
+    sv.photos.push({t:new Date().toLocaleString(),data:c.toDataURL("image/jpeg",0.7)});
+    URL.revokeObjectURL(url); save(); renderPhotos(); toast("Photo added ✓");};
+  img.src=url; e.target.value="";};
+function renderPhotos(){const sv=curSurvey(); const d=$("imgRow"); d.innerHTML="";
+  (sv.photos||[]).forEach((p,i)=>{const im=document.createElement("img");
+    im.src=p.data; im.title=p.t;
+    im.onclick=()=>{if(confirm("Delete this photo?")){sv.photos.splice(i,1);save();renderPhotos();}};
+    d.appendChild(im);});}
+/* ===== lines & points ===== */
+function renderLines(){const sv=curSurvey(); const sel=$("selLine"); sel.innerHTML="";
+  (sv.lines||[]).forEach(l=>{const o=document.createElement("option");
+    o.value=l.id; o.textContent=l.id; sel.appendChild(o);});
+  if(DB.currentLineId) sel.value=DB.currentLineId;
+  buildChanInputs(); renderPoints();}
+$("selLine").onchange=e=>{DB.currentLineId=e.target.value;save();renderPoints();};
+$("btnAddLine").onclick=()=>{const sv=curSurvey(); if(!sv)return;
+  const id=$("lnId").value.trim()||("Line "+(sv.lines.length+1));
+  const sp=parseFloat($("lnSpacing").value)||0;
+  if(sv.lines.some(l=>l.id===id)){toast("Line ID exists");return;}
+  sv.lines.push({id, spacing:sp, points:[]});
+  DB.currentLineId=sv.lines[sv.lines.length-1].id;
+  $("lnId").value=""; $("lnSpacing").value=""; save(); renderLines();};
+function buildChanInputs(){const sv=curSurvey(); const d=$("chanInputs"); d.innerHTML="";
+  if(!sv)return; const n=sv.nchan||4;
+  for(let i=0;i<n;i++){const w=document.createElement("div");
+    w.innerHTML=`<label>Ch ${i+1}</label><input id="ch${i}" inputmode="decimal" placeholder="value">`;
+    d.appendChild(w);}}
+$("btnAddPoint").onclick=()=>{const sv=curSurvey(),ln=curLine();
+  if(!ln){toast("Add a profile line first");return;}
+  const n=parseInt($("pN").value,10), dist=parseFloat($("pDist").value);
+  if(!isFinite(n)||n<=0){toast("Enter point number");return;}
+  if(ln.points.some(p=>p.n===n)){toast("Point exists — edit via table");return;}
+  const ch=[]; for(let i=0;i<(sv.nchan||4);i++){
+    const v=parseFloat($(`ch${i}`).value); ch.push(isFinite(v)?v:null);}
+  if(ch.every(v=>v===null)){toast("Enter at least one channel value");return;}
+  const anom=$("pAnom").value==="yes";
+  const cd=parseFloat($("pDepth").value);
+  ln.points.push({n, dist:isFinite(dist)?dist:(n-1)*(ln.spacing||0),
+    ch, anomaly:anom, claimDepth:(anom&&isFinite(cd)&&cd>0)?cd:null});
+  ln.points.sort((a,b)=>a.n-b.n);
+  ["pN","pDist","pDepth"].forEach(i=>$(i).value=""); $("pAnom").value="no";
+  for(let i=0;i<(sv.nchan||4);i++)$(`ch${i}`).value="";
+  save(); renderPoints(); toast("Point "+n+" logged ✓");};
+function renderPoints(){const sv=curSurvey(),ln=curLine();
+  const th=$("ptTable").querySelector("thead"), tb=$("ptTable").querySelector("tbody");
+  th.innerHTML=""; tb.innerHTML="";
+  if(!ln){$("plotNote").textContent="Add a profile line to start logging."; drawProfile(); return;}
+  const n=sv.nchan||4;
+  let h="<tr><th>Pt</th><th>Dist</th>";
+  for(let i=0;i<n;i++)h+=`<th>Ch${i+1}</th>`;
+  h+="<th>Flag</th><th>Claim m</th><th></th></tr>"; th.innerHTML=h;
+  ln.points.forEach((p,idx)=>{const tr=document.createElement("tr");
+    let r=`<td class="n">${p.n}</td><td class="c">${p.dist}</td>`;
+    p.ch.forEach(v=>{r+=`<td class="c">${v===null?"—":v}</td>`;});
+    r+=`<td>${p.anomaly?'<span class="pill yes">FLAG</span>':'<span class="pill no">—</span>'}</td>
+        <td class="c">${p.claimDepth||"—"}</td>`;
+    tr.innerHTML=r;
+    const td=document.createElement("td"); const b=document.createElement("button");
+    b.className="small danger"; b.textContent="✕"; b.style.margin="0";
+    b.onclick=()=>{ln.points.splice(idx,1);save();renderPoints();};
+    td.appendChild(b); tr.appendChild(td); tb.appendChild(tr);});
+  drawProfile();}
+/* ===== profile plot ===== */
+function setupCanvas(cv){const dpr=window.devicePixelRatio||1;
+  const w=cv.clientWidth,h=cv.clientHeight;
+  cv.width=w*dpr; cv.height=h*dpr;
+  const c=cv.getContext("2d"); c.setTransform(dpr,0,0,dpr,0,0);
+  return {c,w,h};}
+const CHCOLORS=["#ffb703","#52d273","#4cc9f0","#f72585","#b892ff","#ff9f1c","#80ed99","#ff6b6b"];
+function drawProfile(){const cv=$("profPlot"); const {c,w,h}=setupCanvas(cv);
+  c.clearRect(0,0,w,h);
+  const ln=curLine(); const sv=curSurvey();
+  if(!ln||!ln.points.length){
+    c.fillStyle="#9db4d0"; c.font="14px system-ui";
+    c.fillText("No points yet — log what the device shows.",16,h/2); return;}
+  const n=sv.nchan||4, pad=34;
+  const xs=ln.points.map(p=>p.dist), ys=[];
+  ln.points.forEach(p=>p.ch.forEach((v,i)=>{if(v!==null)ys.push(v);}));
+  if(!ys.length)return;
+  let x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  if(x1===x0)x1=x0+1; if(y1===y0)y1=y0+1;
+  const X=x=>pad+(x-x0)/(x1-x0)*(w-2*pad), Y=y=>h-pad-(y-y0)/(y1-y0)*(h-2*pad);
+  c.strokeStyle="#274264"; c.lineWidth=1;
+  c.beginPath(); c.moveTo(pad,10); c.lineTo(pad,h-pad); c.lineTo(w-10,h-pad); c.stroke();
+  c.fillStyle="#9db4d0"; c.font="10px system-ui";
+  c.fillText("distance →",w-70,h-8); c.fillText("value",6,16);
+  for(let i=0;i<n;i++){c.strokeStyle=CHCOLORS[i%8]; c.lineWidth=2; c.beginPath();
+    let started=false;
+    ln.points.forEach(p=>{const v=p.ch[i];
+      if(v===null)return;
+      if(!started){c.moveTo(X(p.dist),Y(v));started=true;}else c.lineTo(X(p.dist),Y(v));});
+    c.stroke();}
+  // anomaly flags
+  ln.points.forEach(p=>{if(!p.anomaly)return;
+    const v=p.ch.find(v=>v!==null); if(v===undefined)return;
+    c.fillStyle="#ff5d5d"; c.beginPath(); c.arc(X(p.dist),Y(v),6,0,7); c.fill();
+    c.fillStyle="#ff9c9c"; c.font="bold 10px system-ui";
+    c.fillText("⚑"+(p.claimDepth?p.claimDepth+"m":""),X(p.dist)-14,Y(v)-12);});
+  // legend
+  c.font="10px system-ui";
+  for(let i=0;i<n;i++){c.fillStyle=CHCOLORS[i%8];
+    c.fillText("— Ch"+(i+1),pad+i*52,h-8);}
+  $("plotNote").textContent=ln.points.length+" points · red ⚑ = device-flagged anomaly (claimed depth shown)";}
+/* ===== AI second opinion (rule-based, on-device) ===== */
+//__ENGINE_START__
+function secondOpinion(survey, line){
+  const reasons=[]; let score=0;
+  const pts=(line&&line.points)||[];
+  if(!pts.length)
+    return {verdict:"none", title:"No data yet",
+      reasons:["Log the device's readings on the Profile tab first — the second opinion needs something to chew on."], score:0};
+  const claims=pts.filter(p=>p.anomaly&&p.claimDepth>0);
+  const T=survey.terrain||"unknown";
+  // 1) terrain plausibility of each claimed depth
+  claims.forEach(c=>{
+    if(T==="basement"){
+      if(c.claimDepth>70){score-=2;
+        reasons.push(`<b>Point ${c.n}:</b> device claims water at <b>${c.claimDepth} m</b>, but in basement terrain the productive zone is usually the weathered/fractured layer (~15–60 m). Claims deeper than ~70 m need hard evidence — a nearby deep borehole, not just the screen.`);
+      }else if(c.claimDepth>=15){score+=1;
+        reasons.push(`<b>Point ${c.n}:</b> ${c.claimDepth} m sits inside the typical basement productive window (15–60 m) — geologically plausible.`);
+      }else{score-=1;
+        reasons.push(`<b>Point ${c.n}:</b> device claims water at only <b>${c.claimDepth} m</b> — that is topsoil/laterite depth. Shallow "water" like this often dries up in dry season (ask the Borehole Doctor's Case Note 103 😅).`);
+      }
+    }else if(T==="sedimentary"){
+      if(c.claimDepth>150){score-=1;
+        reasons.push(`<b>Point ${c.n}:</b> ${c.claimDepth} m is deep even for sedimentary ground — drilling that far costs serious money. Demand corroboration before the rig moves.`);
+      }else{score+=1;
+        reasons.push(`<b>Point ${c.n}:</b> ${c.claimDepth} m is within a reasonable sedimentary range — plausible, still needs a cross-check.`);
+      }
+    }else if(T==="mixed"){
+      reasons.push(`<b>Point ${c.n}:</b> ${c.claimDepth} m claimed at a contact/mixed zone — contacts can hold water, but they are also where these devices hallucinate most. Verify.`);
+    }
+  });
+  // 2) nearby borehole cross-check — the strongest evidence available
+  const wells=(survey.wells||[]).filter(w=>w.depth>0);
+  if(wells.length&&claims.length){
+    const avg=claims.reduce((a,c)=>a+c.claimDepth,0)/claims.length;
+    const prod=wells.filter(w=>w.out!=="Dry / failed");
+    const match=prod.some(w=>Math.abs(w.depth-avg)/avg<=0.35);
+    const dryNear=wells.some(w=>w.out==="Dry / failed"&&Math.abs(w.depth-avg)/avg<=0.35);
+    if(match){score+=2;
+      reasons.push(`<b>Nearby records agree:</b> a productive borehole near this site sits within ±35% of the device's claimed depth (~${avg.toFixed(0)} m). That is real corroboration — the best kind.`);
+    }else{score-=2;
+      reasons.push(`<b>Nearby records disagree:</b> known boreholes near this site do not line up with the claimed ~${avg.toFixed(0)} m. The ground you know beats the screen you don't.`);
+    }
+    if(dryNear){score-=1;
+      reasons.push(`<b>Warning:</b> a borehole near the claimed depth was drilled <b>dry</b>. Same depth, same ground, no water — think twice.`);
+    }
+  }else if(claims.length){
+    score-=1;
+    reasons.push(`<b>No nearby borehole records entered.</b> The single strongest cross-check is missing — add any borehole you know under the Survey tab, successful or failed.`);
+  }
+  // 3) shotgun check — device flagging everything flags nothing
+  let shotgun=false;
+  if(pts.length>=5&&claims.length/pts.length>0.4){score-=2; shotgun=true;
+    reasons.push(`<b>Shotgun pattern:</b> the device flagged ${claims.length} of ${pts.length} points. When everything is an anomaly, nothing is — this smells like the device guessing.`);
+  }
+  // 4) silence is data too
+  if(!claims.length){
+    reasons.push(`<b>No anomalies flagged</b> on this line. Absence of a flag is also information — don't force a drilling point where the device itself saw nothing.`);
+  }
+  // 5) missing geology
+  if(T==="unknown"){score-=1;
+    reasons.push(`<b>Terrain not set.</b> Pick the geology under the Survey tab — the second opinion is only as good as the ground truth you give it.`);
+  }
+  // verdict
+  let verdict,title,cls;
+  if(score>=3){verdict="promising";title="✅ PROMISING — but verify before the rig";cls="good";}
+  else if(score>=-1){verdict="shaky";title="⚠️ SHAKY — do not drill without confirmation";cls="mid";}
+  else{verdict="weak";title="🛑 WEAK — do not drill on this device's word alone";cls="poor";}
+  if(shotgun&&verdict==="promising"){ // a guessing device can never earn full confidence
+    verdict="shaky"; title="⚠️ SHAKY — do not drill without confirmation"; cls="mid";
+    reasons.push(`<b>Verdict capped:</b> the score looked promising, but the shotgun flagging pattern means the device was guessing — so "promising" is off the table until a VES confirms it.`);
+  }
+  const rec=verdict==="promising"
+    ? `Strongest next step: run a quick VES (resistivity) sounding over the flagged point${claims.length>1?"s":""} to confirm depth and layering before spending drilling money.`
+    : `Do not mobilise a rig on this. Either gather more ground truth (nearby logs, geology) or run a proper VES/resistivity survey — the method with published physics and a track record.`;
+  return {verdict,title,cls,reasons,rec,score};
+}
+//__ENGINE_END__
+$("btnOpinion").onclick=()=>{const sv=curSurvey(),ln=curLine();
+  if(!sv){toast("Create a survey first");return;}
+  if(!ln){toast("Add a profile line first");return;}
+  const o=secondOpinion(sv,ln);
+  const d=$("opinionOut");
+  d.innerHTML=`<div class="verdict ${o.cls}">${o.title}</div>`+
+    o.reasons.map(r=>`<div class="reason">${r}</div>`).join("")+
+    `<div class="reason"><b>📋 Recommendation:</b> ${o.rec}</div>`;
+  d.scrollIntoView({behavior:"smooth",block:"nearest"});};
+/* ===== map ===== */
+function drawMap(){const cv=$("mapCv"); const {c,w,h}=setupCanvas(cv);
+  c.clearRect(0,0,w,h);
+  const sv=curSurvey();
+  const pts=[];
+  (sv.lines||[]).forEach((l,li)=>l.points.forEach(p=>{
+    if(p.lat&&p.lon)pts.push({la:parseFloat(p.lat),lo:parseFloat(p.lon),label:l.id+"-"+p.n,flag:p.anomaly});}));
+  // note: per-point GPS not collected in v1; fall back to site GPS + line layout
+  if(sv.gps.lat&&sv.gps.lon){
+    c.fillStyle="#9db4d0"; c.font="12px system-ui";
+    c.fillText("Site: "+sv.gps.lat+", "+sv.gps.lon,w/2-90,20);
+    (sv.lines||[]).forEach((l,li)=>{
+      const y=60+li*46;
+      c.strokeStyle="#ffb703"; c.lineWidth=3; c.beginPath();
+      c.moveTo(30,y); c.lineTo(w-30,y); c.stroke();
+      c.fillStyle="#eaf2fb"; c.font="bold 12px system-ui";
+      c.fillText(l.id+" ("+l.points.length+" pts)",34,y-8);
+      l.points.forEach((p,pi)=>{
+        const x=30+(pi/Math.max(1,l.points.length-1))*(w-60);
+        c.fillStyle=p.anomaly?"#ff5d5d":"#52d273";
+        c.beginPath(); c.arc(x,y,6,0,7); c.fill();
+        if(p.anomaly&&p.claimDepth){c.fillStyle="#ff9c9c"; c.font="10px system-ui";
+          c.fillText(p.claimDepth+"m",x-12,y+18);}
+      });
+    });
+    $("mapNote").textContent="Schematic line layout (tap a point's row in Profile for details). Site GPS: "+sv.gps.lat+", "+sv.gps.lon;
+  }else{
+    c.fillStyle="#9db4d0"; c.font="14px system-ui";
+    c.fillText("Capture site GPS on the Survey tab to anchor the map.",16,h/2);
+    $("mapNote").textContent="No site GPS yet.";
+  }}
+/* ===== tabs ===== */
+document.querySelectorAll("#tabs button").forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll("#tabs button").forEach(x=>x.classList.remove("on"));
+    b.classList.add("on");
+    document.querySelectorAll("section.tab").forEach(s=>s.classList.remove("on"));
+    $("tab-"+b.dataset.t).classList.add("on");
+    if(b.dataset.t==="map")drawMap();
+    if(b.dataset.t==="profile"){buildChanInputs();renderPoints();}
+  };});
+$("btnSun").onclick=()=>{document.body.classList.toggle("sun");
+  drawProfile(); if($("tab-map").classList.contains("on"))drawMap();};
+/* ===== exports ===== */
+function dl(name,content,type){const b=new Blob([content],{type});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download=name;
+  document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+$("btnCsv").onclick=()=>{const sv=curSurvey(),ln=curLine();
+  if(!ln||!ln.points.length){toast("Nothing to export");return;}
+  const n=sv.nchan||4;
+  let s="line,point,distance_m,"+Array.from({length:n},(_,i)=>"ch"+(i+1)).join(",")+",flagged,claimed_depth_m\n";
+  ln.points.forEach(p=>{s+=`${ln.id},${p.n},${p.dist},`+
+    p.ch.map(v=>v===null?"":v).join(",")+`,${p.anomaly?"yes":"no"},${p.claimDepth||""}\n`;});
+  dl(`wdc_${ln.id.replace(/\W+/g,"_")}.csv`,s,"text/csv"); toast("CSV saved ✓");};
+function buildReport(){const sv=curSurvey(),ln=curLine();
+  const o=(sv&&ln)?secondOpinion(sv,ln):null;
+  drawProfile();
+  const plot=$("profPlot").toDataURL("image/png");
+  const n=sv?sv.nchan||4:4;
+  let rows="";
+  if(ln)ln.points.forEach(p=>{rows+=`<tr><td>${p.n}</td><td>${p.dist}</td>`+
+    p.ch.map(v=>`<td>${v===null?"—":v}</td>`).join("")+
+    `<td>${p.anomaly?"YES":"—"}</td><td>${p.claimDepth||"—"}</td></tr>`;});
+  let wells="";
+  (sv.wells||[]).forEach(w=>{wells+=`<tr><td>${w.depth} m</td><td>${w.yield||"—"}</td><td>${w.dist||"—"}</td><td>${w.out}</td></tr>`;});
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>WDC Report — ${sv?sv.name:""}</title>
+<style>body{font-family:Arial,sans-serif;max-width:700px;margin:20px auto;color:#111;padding:0 12px}
+h1{color:#b8860b}table{border-collapse:collapse;width:100%;font-size:13px;margin:10px 0}
+th,td{border:1px solid #999;padding:6px;text-align:left}img{max-width:100%}
+.verd{padding:12px;border-radius:8px;font-weight:bold;margin:10px 0}
+.good{background:#dff0e2}.mid{background:#fdf0d5}.poor{background:#f9dcdc}
+.disc{font-size:12px;color:#555;border-top:1px dashed #999;margin-top:14px;padding-top:8px}</style></head><body>
+<h1>📡 Water Detector Companion™ — Field Report</h1>
+<p><b>Survey:</b> ${sv?sv.name:""} &nbsp; <b>Date:</b> ${sv?sv.date:""} &nbsp; <b>Site:</b> ${sv?sv.site:""}<br>
+<b>Device:</b> ${sv?sv.device:""} &nbsp; <b>Terrain:</b> ${sv?sv.terrain:""} &nbsp; <b>Line:</b> ${ln?ln.id:""}<br>
+<b>GPS:</b> ${sv?sv.gps.lat+", "+sv.gps.lon:"—"}</p>
+<h2>Profile plot</h2><img src="${plot}">
+<h2>Logged points</h2><table><tr><th>Pt</th><th>Dist</th>${Array.from({length:n},(_,i)=>`<th>Ch${i+1}</th>`).join("")}<th>Flag</th><th>Claim m</th></tr>${rows}</table>
+<h2>Nearby borehole records</h2><table><tr><th>Depth</th><th>Yield</th><th>Distance</th><th>Outcome</th></tr>${wells||'<tr><td colspan="4">None entered</td></tr>'}</table>
+${o?`<h2>🤖 The Doctor's Second Opinion — ${o.title}</h2><div class="verd ${o.cls}">${o.title}</div>
+${o.reasons.map(r=>`<p>${r.replace(/<[^>]+>/g,"")}</p>`).join("")}<p><b>Recommendation:</b> ${o.rec}</p>`:""}
+<div class="disc">Generated on-device by Water Detector Companion™ — The Borehole Doctor · Dr. Uche Aluge Daniel.<br>
+This second opinion cross-checks the device's claims against hydrogeological common sense; it does not validate the device's measurement physics. Natural-electric-field "water detectors" have no peer-reviewed physical basis for depth/yield claims — confirm with a real VES (resistivity) survey before drilling.</div>
+</body></html>`;}
+$("btnHtml").onclick=()=>{const sv=curSurvey();
+  if(!sv){toast("Create a survey first");return;}
+  dl(`wdc_report_${sv.name.replace(/\W+/g,"_")}.html`,buildReport(),"text/html");
+  toast("Report saved ✓");};
+$("btnJson").onclick=()=>{dl("wdc_backup.json",JSON.stringify(DB),"application/json");toast("Backup saved ✓");};
+$("fileJson").onchange=e=>{const f=e.target.files[0]; if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{DB=JSON.parse(r.result);save();renderAll();toast("Restored ✓");}
+    catch(err){toast("Bad file");}};
+  r.readAsText(f); e.target.value="";};
+/* ===== init ===== */
+function renderAll(){renderSurveys(); bindSurveyInputs();}
+function init(){load();
+  if(!DB.surveys.length){const s=blankSurvey(); DB.surveys.push(s); DB.currentSurveyId=s.id;}
+  if(!curSurvey())DB.currentSurveyId=DB.surveys[0].id;
+  const sv=curSurvey(); if(sv&&!curLine())DB.currentLineId=(sv.lines[0]||{}).id||null;
+  save(); renderAll();}
+init();
+</script>
+</body>
+</html>
